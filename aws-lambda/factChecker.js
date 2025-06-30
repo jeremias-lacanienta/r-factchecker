@@ -190,43 +190,415 @@ async function analyzeUrl(targetUrl, options) {
  */
 function extractClaims(text) {
     // Simple claim extraction - in production would use NLP
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 5);
     
-    // Look for factual claims (sentences with numbers, dates, specific assertions)
+    // Look for factual claims - be more inclusive
     return sentences.filter(sentence => {
+        const trimmed = sentence.trim();
+        if (trimmed.length < 10) return false;
+        
+        // Accept any sentence that makes an assertion
+        const hasAssertion = /\b(is|are|was|were|will|can|does|helps|improves|causes|prevents|shows|indicates|according to|study|research|report|claims|states|found|discovered)\b/i.test(sentence);
         const hasNumbers = /\d/.test(sentence);
-        const hasFactualWords = /\b(is|are|was|were|will|according to|study|research|report)\b/i.test(sentence);
-        return hasNumbers || hasFactualWords;
+        const hasSubjectAndPredicate = sentence.split(' ').length >= 4;
+        
+        return hasAssertion || hasNumbers || hasSubjectAndPredicate;
     }).slice(0, 5); // Limit claims
 }
 
 /**
- * Verify a single claim
+ * Verify a single claim using real fact-checking APIs
  */
 async function verifyClaim(claim) {
-    // Mock verification - in production would use fact-checking APIs
     const keywords = claim.toLowerCase();
     
-    // Simple keyword-based verification simulation
-    if (keywords.includes('covid') || keywords.includes('vaccine')) {
+    try {
+        // Use multiple fact-checking sources
+        const factCheckResults = await Promise.allSettled([
+            checkWithSnopes(claim),
+            checkWithFactCheckOrg(claim),
+            checkWithPolitiFact(claim),
+            checkWithNewsAPI(claim),
+            checkWithGoogleFactCheck(claim)
+        ]);
+        
+        // Process results
+        const validResults = factCheckResults
+            .filter(result => result.status === 'fulfilled' && result.value)
+            .map(result => result.value);
+        
+        if (validResults.length > 0) {
+            // Aggregate multiple fact-check results
+            return aggregateFactCheckResults(validResults, claim);
+        }
+        
+        // If no external sources return data, try a general web search
+        return await performGeneralFactCheck(claim);
+        
+    } catch (error) {
+        console.error('Error in fact verification:', error);
         return {
-            verdict: 'disputed',
-            explanation: 'Health claims require verification from authoritative medical sources.',
-            confidence: 60
+            verdict: 'unverified',
+            explanation: 'Unable to verify claim due to technical issues.',
+            confidence: 30
         };
-    } else if (keywords.includes('climate') || keywords.includes('temperature')) {
+    }
+}
+
+/**
+ * Check claim against Snopes fact-checking database
+ */
+async function checkWithSnopes(claim) {
+    // Note: Snopes doesn't have a public API, but you could web scrape or use third-party services
+    // For now, implementing search-based verification
+    return await searchBasedFactCheck(claim, 'snopes.com');
+}
+
+/**
+ * Check claim with FactCheck.org
+ */
+async function checkWithFactCheckOrg(claim) {
+    return await searchBasedFactCheck(claim, 'factcheck.org');
+}
+
+/**
+ * Check claim with PolitiFact
+ */
+async function checkWithPolitiFact(claim) {
+    return await searchBasedFactCheck(claim, 'politifact.com');
+}
+
+/**
+ * Use NewsAPI to find recent articles about the claim
+ */
+async function checkWithNewsAPI(claim) {
+    const API_KEY = process.env.NEWSAPI_KEY;
+    if (!API_KEY) {
+        console.log('NewsAPI key not configured');
+        return null;
+    }
+    
+    try {
+        const query = encodeURIComponent(claim.substring(0, 100)); // Limit query length
+        const apiUrl = `https://newsapi.org/v2/everything?q=${query}&sortBy=relevancy&language=en&apiKey=${API_KEY}`;
+        
+        const response = await httpRequest(apiUrl);
+        const data = JSON.parse(response);
+        
+        if (data.articles && data.articles.length > 0) {
+            // Analyze article titles and descriptions for fact-checking keywords
+            const articles = data.articles.slice(0, 5);
+            const factCheckKeywords = ['debunk', 'false', 'true', 'fact-check', 'verify', 'misleading', 'accurate'];
+            
+            const relevantArticles = articles.filter(article => {
+                const text = (article.title + ' ' + article.description).toLowerCase();
+                return factCheckKeywords.some(keyword => text.includes(keyword));
+            });
+            
+            if (relevantArticles.length > 0) {
+                // Analyze sentiment and fact-checking language
+                return analyzeNewsArticles(relevantArticles, claim);
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('NewsAPI error:', error);
+        return null;
+    }
+}
+
+/**
+ * Search-based fact checking using Google Custom Search
+ */
+async function searchBasedFactCheck(claim, site) {
+    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+    const SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
+        console.log('Google Search API not configured');
+        return null;
+    }
+    
+    try {
+        const query = encodeURIComponent(`"${claim}" site:${site}`);
+        const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${query}`;
+        
+        const response = await httpRequest(searchUrl);
+        const data = JSON.parse(response);
+        
+        if (data.items && data.items.length > 0) {
+            return analyzeSearchResults(data.items, claim, site);
+        }
+        
+        return null;
+    } catch (error) {
+        console.error(`Search error for ${site}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Analyze news articles for fact-checking information
+ */
+function analyzeNewsArticles(articles, claim) {
+    const positiveWords = ['true', 'accurate', 'confirmed', 'verified', 'correct'];
+    const negativeWords = ['false', 'misleading', 'debunked', 'incorrect', 'wrong'];
+    const uncertainWords = ['disputed', 'unclear', 'unverified', 'questionable'];
+    
+    let positiveScore = 0;
+    let negativeScore = 0;
+    let uncertainScore = 0;
+    
+    articles.forEach(article => {
+        const text = (article.title + ' ' + article.description).toLowerCase();
+        
+        positiveWords.forEach(word => {
+            if (text.includes(word)) positiveScore++;
+        });
+        
+        negativeWords.forEach(word => {
+            if (text.includes(word)) negativeScore++;
+        });
+        
+        uncertainWords.forEach(word => {
+            if (text.includes(word)) uncertainScore++;
+        });
+    });
+    
+    const totalScore = positiveScore + negativeScore + uncertainScore;
+    if (totalScore === 0) return null;
+    
+    if (positiveScore > negativeScore && positiveScore > uncertainScore) {
         return {
             verdict: 'true',
-            explanation: 'Climate data can be verified through scientific institutions.',
-            confidence: 85
+            explanation: `News sources suggest this claim is likely accurate.`,
+            confidence: Math.min(90, 60 + (positiveScore * 10)),
+            sources: articles.map(a => a.url)
+        };
+    } else if (negativeScore > positiveScore && negativeScore > uncertainScore) {
+        return {
+            verdict: 'false',
+            explanation: `News sources suggest this claim is likely false or misleading.`,
+            confidence: Math.min(90, 60 + (negativeScore * 10)),
+            sources: articles.map(a => a.url)
         };
     } else {
         return {
-            verdict: 'unverified',
-            explanation: 'Claim requires additional verification from reliable sources.',
-            confidence: 50
+            verdict: 'disputed',
+            explanation: `Sources show mixed or disputed information about this claim.`,
+            confidence: 60,
+            sources: articles.map(a => a.url)
         };
     }
+}
+
+/**
+ * Analyze search results from fact-checking sites
+ */
+function analyzeSearchResults(items, claim, site) {
+    // Look for fact-checking language in snippets
+    const factCheckLanguage = {
+        'true': ['true', 'accurate', 'correct', 'confirmed'],
+        'false': ['false', 'misleading', 'incorrect', 'debunked'],
+        'disputed': ['disputed', 'mixed', 'partly true', 'partly false']
+    };
+    
+    let bestMatch = null;
+    let highestRelevance = 0;
+    
+    items.forEach(item => {
+        const snippet = item.snippet.toLowerCase();
+        
+        // Calculate relevance based on claim keywords
+        const claimWords = claim.toLowerCase().split(' ');
+        const relevance = claimWords.filter(word => snippet.includes(word)).length / claimWords.length;
+        
+        if (relevance > highestRelevance) {
+            highestRelevance = relevance;
+            
+            // Determine verdict from snippet
+            for (const [verdict, keywords] of Object.entries(factCheckLanguage)) {
+                if (keywords.some(keyword => snippet.includes(keyword))) {
+                    bestMatch = {
+                        verdict,
+                        explanation: `${site} analysis: ${item.snippet}`,
+                        confidence: Math.round(relevance * 80 + 20),
+                        source: item.link
+                    };
+                    break;
+                }
+            }
+        }
+    });
+    
+    return bestMatch;
+}
+
+/**
+ * Use Google Search to find fact-checking information from multiple sources
+ */
+async function checkWithGoogleFactCheck(claim) {
+    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+    const SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
+        console.log('Google Search API not configured');
+        return null;
+    }
+    
+    try {
+        // Search for fact-checks of this specific claim
+        const query = encodeURIComponent(`"${claim}" fact check OR debunk OR verify OR false OR true`);
+        const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${query}`;
+        
+        const response = await httpRequest(searchUrl);
+        const data = JSON.parse(response);
+        
+        if (data.items && data.items.length > 0) {
+            return analyzeFactCheckSearchResults(data.items, claim);
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Google fact-check search error:', error);
+        return null;
+    }
+}
+
+/**
+ * Analyze fact-check search results to determine verdict
+ */
+function analyzeFactCheckSearchResults(items, claim) {
+    const factCheckKeywords = {
+        'true': ['true', 'accurate', 'correct', 'confirmed', 'verified', 'factual'],
+        'false': ['false', 'misleading', 'incorrect', 'debunked', 'wrong', 'myth', 'hoax'],
+        'disputed': ['disputed', 'mixed', 'partly true', 'partly false', 'unclear', 'unproven']
+    };
+    
+    let verdictScores = { true: 0, false: 0, disputed: 0 };
+    let bestExplanation = '';
+    let sources = [];
+    
+    items.forEach(item => {
+        const text = (item.title + ' ' + item.snippet).toLowerCase();
+        sources.push(item.link);
+        
+        // Score based on fact-checking keywords
+        for (const [verdict, keywords] of Object.entries(factCheckKeywords)) {
+            const score = keywords.filter(keyword => text.includes(keyword)).length;
+            verdictScores[verdict] += score;
+            
+            if (score > 0 && !bestExplanation) {
+                bestExplanation = item.snippet;
+            }
+        }
+    });
+    
+    // Determine the verdict with highest score
+    const topVerdict = Object.keys(verdictScores).reduce((a, b) => 
+        verdictScores[a] > verdictScores[b] ? a : b
+    );
+    
+    const totalScore = Object.values(verdictScores).reduce((a, b) => a + b, 0);
+    
+    if (totalScore === 0) {
+        return {
+            verdict: 'unverified',
+            explanation: 'No clear fact-checking information found in search results.',
+            confidence: 30,
+            sources: sources.slice(0, 3)
+        };
+    }
+    
+    const confidence = Math.min(90, 50 + (verdictScores[topVerdict] / totalScore) * 40);
+    
+    return {
+        verdict: topVerdict,
+        explanation: bestExplanation || `Search results suggest this claim is ${topVerdict}.`,
+        confidence: Math.round(confidence),
+        sources: sources.slice(0, 3)
+    };
+}
+
+/**
+ * Aggregate multiple fact-check results
+ */
+function aggregateFactCheckResults(results, claim) {
+    if (results.length === 1) {
+        return results[0];
+    }
+    
+    // Count verdicts
+    const verdictCounts = {};
+    let totalConfidence = 0;
+    let allSources = [];
+    
+    results.forEach(result => {
+        verdictCounts[result.verdict] = (verdictCounts[result.verdict] || 0) + 1;
+        totalConfidence += result.confidence;
+        if (result.sources) {
+            allSources = allSources.concat(result.sources);
+        }
+        if (result.source) {
+            allSources.push(result.source);
+        }
+    });
+    
+    // Find most common verdict
+    const mostCommonVerdict = Object.keys(verdictCounts).reduce((a, b) => 
+        verdictCounts[a] > verdictCounts[b] ? a : b
+    );
+    
+    const averageConfidence = Math.round(totalConfidence / results.length);
+    
+    return {
+        verdict: mostCommonVerdict,
+        explanation: `Multiple fact-checking sources analyzed. ${verdictCounts[mostCommonVerdict]} sources indicate: ${mostCommonVerdict}.`,
+        confidence: averageConfidence,
+        sources: [...new Set(allSources)], // Remove duplicates
+        aggregated: true,
+        sourceCount: results.length
+    };
+}
+
+/**
+ * HTTP request helper function
+ */
+function httpRequest(url) {
+    return new Promise((resolve, reject) => {
+        const urlParts = new URL(url);
+        const options = {
+            hostname: urlParts.hostname,
+            port: urlParts.port || 443,
+            path: urlParts.pathname + urlParts.search,
+            method: 'GET',
+            headers: {
+                'User-Agent': 'r-factchecker/1.0'
+            }
+        };
+        
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+            res.on('end', () => {
+                resolve(data);
+            });
+        });
+        
+        req.on('error', (error) => {
+            reject(error);
+        });
+        
+        req.setTimeout(10000, () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+        });
+        
+        req.end();
+    });
 }
 
 /**
@@ -275,26 +647,167 @@ function generateSummary(details, status) {
 }
 
 /**
- * Find relevant sources for verification
+ * Find relevant sources for verification using real APIs
  */
 async function findRelevantSources(content) {
-    // Mock sources - in production would search fact-checking databases
-    return [
-        {
-            title: 'Fact-Check Database',
-            url: 'https://factcheck.org',
-            credibility: 95,
-            date: new Date(),
-            excerpt: 'Authoritative fact-checking resource...'
-        },
-        {
-            title: 'Academic Research',
-            url: 'https://scholar.google.com',
-            credibility: 90,
-            date: new Date(),
-            excerpt: 'Peer-reviewed research on related topics...'
+    const sources = [];
+    
+    try {
+        // Use NewsAPI to find recent relevant articles
+        const newsResults = await searchNewsForSources(content);
+        if (newsResults) {
+            sources.push(...newsResults);
         }
+        
+        // Add authoritative fact-checking sources
+        const factCheckSources = await searchFactCheckSources(content);
+        if (factCheckSources) {
+            sources.push(...factCheckSources);
+        }
+        
+        // Add academic sources if available
+        const academicSources = await searchAcademicSources(content);
+        if (academicSources) {
+            sources.push(...academicSources);
+        }
+        
+    } catch (error) {
+        console.error('Error finding sources:', error);
+    }
+    
+    // Fallback to default authoritative sources if no specific sources found
+    if (sources.length === 0) {
+        sources.push(
+            {
+                title: 'Snopes Fact-Checking',
+                url: 'https://www.snopes.com',
+                credibility: 95,
+                date: new Date(),
+                excerpt: 'Comprehensive fact-checking database for claims and rumors'
+            },
+            {
+                title: 'FactCheck.org',
+                url: 'https://www.factcheck.org',
+                credibility: 95,
+                date: new Date(),
+                excerpt: 'Nonpartisan fact-checking service from University of Pennsylvania'
+            }
+        );
+    }
+    
+    return sources.slice(0, 5); // Limit to 5 sources
+}
+
+/**
+ * Search for news sources using NewsAPI
+ */
+async function searchNewsForSources(content) {
+    const API_KEY = process.env.NEWSAPI_KEY;
+    if (!API_KEY) return null;
+    
+    try {
+        const query = encodeURIComponent(content.substring(0, 100));
+        const apiUrl = `https://newsapi.org/v2/everything?q=${query}&sortBy=relevancy&language=en&apiKey=${API_KEY}&pageSize=5`;
+        
+        const response = await httpRequest(apiUrl);
+        const data = JSON.parse(response);
+        
+        if (data.articles) {
+            return data.articles.map(article => ({
+                title: article.title,
+                url: article.url,
+                credibility: calculateDomainCredibility(article.source.name),
+                date: new Date(article.publishedAt),
+                excerpt: article.description || 'Recent news coverage of related topics'
+            }));
+        }
+    } catch (error) {
+        console.error('NewsAPI search error:', error);
+    }
+    
+    return null;
+}
+
+/**
+ * Search fact-checking sources
+ */
+async function searchFactCheckSources(content) {
+    const factCheckSites = [
+        { name: 'Snopes', domain: 'snopes.com', credibility: 95 },
+        { name: 'FactCheck.org', domain: 'factcheck.org', credibility: 95 },
+        { name: 'PolitiFact', domain: 'politifact.com', credibility: 90 },
+        { name: 'AP Fact Check', domain: 'apnews.com', credibility: 95 }
     ];
+    
+    const sources = [];
+    
+    for (const site of factCheckSites) {
+        try {
+            const result = await searchBasedFactCheck(content, site.domain);
+            if (result && result.source) {
+                sources.push({
+                    title: `${site.name} Fact Check`,
+                    url: result.source,
+                    credibility: site.credibility,
+                    date: new Date(),
+                    excerpt: result.explanation
+                });
+            }
+        } catch (error) {
+            console.error(`Error searching ${site.name}:`, error);
+        }
+    }
+    
+    return sources.length > 0 ? sources : null;
+}
+
+/**
+ * Search academic sources using Google Scholar-style search
+ */
+async function searchAcademicSources(content) {
+    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+    const SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) return null;
+    
+    try {
+        // Search for academic articles and research papers
+        const query = encodeURIComponent(`"${content.substring(0, 80)}" site:scholar.google.com OR site:pubmed.ncbi.nlm.nih.gov OR site:arxiv.org OR site:researchgate.net`);
+        const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${query}&num=5`;
+        
+        const response = await httpRequest(searchUrl);
+        const data = JSON.parse(response);
+        
+        if (data.items && data.items.length > 0) {
+            return data.items.map(item => ({
+                title: item.title,
+                url: item.link,
+                credibility: 90, // Academic sources have high credibility
+                date: new Date(),
+                excerpt: item.snippet || 'Academic research related to this topic'
+            }));
+        }
+    } catch (error) {
+        console.error('Academic search error:', error);
+    }
+    
+    return null;
+}
+
+/**
+ * Calculate domain credibility based on source name
+ */
+function calculateDomainCredibility(sourceName) {
+    const highCredibility = ['Reuters', 'Associated Press', 'BBC', 'NPR'];
+    const mediumCredibility = ['CNN', 'Fox News', 'NBC', 'CBS', 'ABC'];
+    
+    if (highCredibility.some(source => sourceName.includes(source))) {
+        return 90;
+    }
+    if (mediumCredibility.some(source => sourceName.includes(source))) {
+        return 75;
+    }
+    return 60; // Default credibility
 }
 
 /**
@@ -374,4 +887,142 @@ async function evaluateDomainCredibility(targetUrl) {
     };
     
     return trustedDomains[domain] || 50;
+}
+
+/**
+ * Perform general fact-checking using web search when specific fact-check sources don't have info
+ */
+async function performGeneralFactCheck(claim) {
+    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+    const SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
+        console.log('Google Search API not configured for general fact-check');
+        return {
+            verdict: 'unverified',
+            explanation: 'Unable to verify claim - external APIs not configured.',
+            confidence: 20
+        };
+    }
+    
+    try {
+        // Search for general information about the claim
+        const query = encodeURIComponent(`"${claim.substring(0, 80)}"`);
+        const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${query}&num=10`;
+        
+        const response = await httpRequest(searchUrl);
+        const data = JSON.parse(response);
+        
+        if (data.items && data.items.length > 0) {
+            return analyzeGeneralSearchResults(data.items, claim);
+        }
+        
+        return {
+            verdict: 'unverified',
+            explanation: 'No relevant information found to verify this claim.',
+            confidence: 25
+        };
+        
+    } catch (error) {
+        console.error('General fact-check error:', error);
+        return {
+            verdict: 'unverified',
+            explanation: 'Unable to verify claim due to search error.',
+            confidence: 20
+        };
+    }
+}
+
+/**
+ * Analyze general search results to assess claim credibility
+ */
+function analyzeGeneralSearchResults(items, claim) {
+    const credibleDomains = [
+        'reuters.com', 'apnews.com', 'bbc.com', 'npr.org', 'pbs.org',
+        'snopes.com', 'factcheck.org', 'politifact.com', 'washingtonpost.com',
+        'nytimes.com', 'cnn.com', 'nbcnews.com', 'abcnews.go.com',
+        'nasa.gov', 'nih.gov', 'cdc.gov', 'who.int', 'nature.com',
+        'science.org', 'sciencemag.org', 'wikipedia.org'
+    ];
+    
+    const supportingKeywords = ['confirmed', 'verified', 'true', 'accurate', 'study shows', 'research indicates'];
+    const contradictingKeywords = ['false', 'debunked', 'myth', 'hoax', 'misleading', 'incorrect', 'disproven'];
+    const uncertainKeywords = ['disputed', 'controversial', 'unclear', 'unproven', 'claims', 'alleged'];
+    
+    let credibleSources = 0;
+    let supportingScore = 0;
+    let contradictingScore = 0;
+    let uncertainScore = 0;
+    let sources = [];
+    let bestExplanation = '';
+    
+    items.forEach(item => {
+        const domain = new URL(item.link).hostname.toLowerCase();
+        const text = (item.title + ' ' + item.snippet).toLowerCase();
+        
+        // Weight by source credibility
+        const isCredible = credibleDomains.some(d => domain.includes(d));
+        const weight = isCredible ? 2 : 1;
+        
+        if (isCredible) credibleSources++;
+        sources.push(item.link);
+        
+        if (!bestExplanation && item.snippet.length > 50) {
+            bestExplanation = item.snippet;
+        }
+        
+        // Score based on keywords
+        supportingKeywords.forEach(keyword => {
+            if (text.includes(keyword)) supportingScore += weight;
+        });
+        
+        contradictingKeywords.forEach(keyword => {
+            if (text.includes(keyword)) contradictingScore += weight;
+        });
+        
+        uncertainKeywords.forEach(keyword => {
+            if (text.includes(keyword)) uncertainScore += weight;
+        });
+    });
+    
+    const totalScore = supportingScore + contradictingScore + uncertainScore;
+    
+    if (totalScore === 0) {
+        return {
+            verdict: 'unverified',
+            explanation: 'Insufficient information found to verify this claim.',
+            confidence: 30,
+            sources: sources.slice(0, 3)
+        };
+    }
+    
+    // Determine verdict based on scores
+    let verdict, confidence, explanation;
+    
+    if (contradictingScore > supportingScore && contradictingScore > uncertainScore) {
+        verdict = 'false';
+        confidence = Math.min(85, 40 + (contradictingScore / totalScore) * 45);
+        explanation = bestExplanation || 'Multiple sources suggest this claim is false or misleading.';
+    } else if (supportingScore > contradictingScore && supportingScore > uncertainScore) {
+        verdict = 'true';
+        confidence = Math.min(85, 40 + (supportingScore / totalScore) * 45);
+        explanation = bestExplanation || 'Multiple sources support this claim.';
+    } else {
+        verdict = 'disputed';
+        confidence = Math.min(70, 30 + (uncertainScore / totalScore) * 40);
+        explanation = bestExplanation || 'Sources show mixed or disputed information about this claim.';
+    }
+    
+    // Boost confidence if we have credible sources
+    if (credibleSources > 0) {
+        confidence = Math.min(90, confidence + (credibleSources * 5));
+    }
+    
+    return {
+        verdict,
+        explanation,
+        confidence: Math.round(confidence),
+        sources: sources.slice(0, 5),
+        credibleSources
+    };
 }
