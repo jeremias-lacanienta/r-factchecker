@@ -1,0 +1,119 @@
+# r/factchecker - AWS Lambda Hackathon Submission
+
+## Project Title
+r/factchecker - AI-Powered Fact-Checking Browser Extension
+
+## Elevator Pitch
+Combat misinformation directly in your browser! r/factchecker uses AWS Lambda to instantly verify Reddit posts, URLs, and selected text with AI-powered analysis.
+
+## Inspiration
+• Misinformation spreads faster than facts online
+• Users need instant verification without leaving their browsing context
+• Fact-checking should be as seamless as spell-checking
+
+## What it does
+• Instantly analyzes Reddit posts, URLs, and selected text for credibility
+• Provides AI-powered credibility scores with visual indicators
+• Works directly in browser via popup and right-click context menu
+• Highlights suspicious content and provides trusted source recommendations
+
+## How I built it
+• Frontend: JavaScript browser extension with Manifest V3 APIs
+• Backend: AWS Lambda functions triggered by API Gateway
+• Integration: Serverless fact-checking with sub-second response times
+• APIs: Reddit API, news sources, and AI analysis services
+
+## Challenges I ran into
+• Browser extension security policies and CORS restrictions with AWS Lambda endpoints
+• Optimizing Lambda cold starts for real-time performance
+• Balancing thorough fact-checking with instant user feedback
+
+## Accomplishments that I'm proud of
+• Built fully functional browser extension from scratch
+• Achieved sub-second AWS Lambda response times
+• Seamless integration between browser APIs and serverless backend
+
+## What I learned
+• Browser extension security policies and API limitations
+• AWS Lambda optimization for fast cold starts
+• Serverless architecture design patterns
+
+## What's next for r/factchecker
+• Enhanced AI models with machine learning improvements
+• Multi-browser support (Firefox, Edge, Safari)
+• Integration with academic databases
+
+## How AWS Lambda was used in this project
+• **Serverless Fact-Checking Engine**: Lambda functions process all content analysis when users right-click or use extension popup, returning credibility scores in real-time
+• **API Gateway Triggers**: HTTP endpoints trigger Lambda execution for Reddit post verification, URL analysis, and text fact-checking requests from browser extension
+• **Auto-Scaling Processing**: Lambda handles concurrent fact-check requests without infrastructure management, automatically scaling based on user demand
+• **External API Integration**: Lambda functions connect to Reddit API, news sources, and fact-checking databases to verify claims and calculate credibility scores
+• **Cost-Effective Architecture**: Pay-per-request model with sub-second response times, ensuring zero costs during idle periods while maintaining instant fact-checking capability
+
+## Built With
+- **Languages**: JavaScript, HTML, CSS, Node.js
+- **AWS Services**: Lambda, API Gateway, SAM
+- **Browser APIs**: Extension API, DOM API, Storage API, Context Menus API
+- **Tools**: Chrome Extension Manifest V3, Web APIs, Chrome DevTools
+- **Libraries**: Fetch API, AWS SDK
+
+## Try it out
+**GitHub Repository**: [Your GitHub URL]
+**Demo Video**: [Your demo video URL]
+**Chrome Web Store**: [Extension URL when published]
+
+## Installation & Setup
+1. Clone the repository
+2. Deploy AWS Lambda: `cd aws-lambda && ./deploy.sh`
+3. Load extension in Chrome: chrome://extensions/ → Load unpacked
+4. Navigate to Reddit or any webpage
+5. Use extension popup or right-click context menu to fact-check
+
+## Hackathon Category
+- AWS Lambda Hackathon
+- Browser Extensions
+- AI/ML Integration
+- Web Security & Trust
+
+## Team Members
+[Your name and details]
+
+## Submission Date
+June 25, 2025
+
+---
+*"Making the internet a more trustworthy place, one fact-check at a time."*
+
+## Built With
+- **Languages**: JavaScript, HTML, CSS, Node.js
+- **AWS Services**: Lambda, API Gateway, SAM
+- **Browser APIs**: Extension API, DOM API, Storage API, Context Menus API
+- **Tools**: Chrome Extension Manifest V3, Web APIs, Chrome DevTools
+- **Libraries**: Fetch API, AWS SDK
+
+## Try it out
+**GitHub Repository**: [Your GitHub URL]
+**Demo Video**: [Your demo video URL]
+**Chrome Web Store**: [Extension URL when published]
+
+## Installation & Setup
+1. Clone the repository
+2. Deploy AWS Lambda: `cd aws-lambda && ./deploy.sh`
+3. Load extension in Chrome: chrome://extensions/ → Load unpacked
+4. Navigate to Reddit or any webpage
+5. Use extension popup or right-click context menu to fact-check
+
+## Hackathon Category
+- AWS Lambda Hackathon
+- Browser Extensions
+- AI/ML Integration
+- Web Security & Trust
+
+## Team Members
+[Your name and details]
+
+## Submission Date
+June 24, 2025
+
+---
+*"Making the internet a more trustworthy place, one fact-check at a time."*

@@ -1,0 +1,32 @@
+{
+  "name": "r-factchecker-browser-extension",
+  "displayName": "r/factchecker",
+  "description": "AI-powered fact-checking browser extension for Reddit posts and URLs using AWS Lambda",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "license": "MIT",
+  "keywords": [
+    "fact-checking",
+    "reddit",
+    "misinformation",
+    "aws-lambda",
+    "browser-extension",
+    "chrome-extension"
+  ],
+  "scripts": {
+    "build": "echo 'Browser extension - no build needed'",
+    "dev": "echo 'Load extension in Chrome: chrome://extensions/ -> Load unpacked'",
+    "package": "zip -r r-factchecker-extension.zip . -x node_modules/\\* .git/\\* *.md package-lock.json",
+    "deploy-lambda": "cd aws-lambda && ./deploy.sh"
+  },
+  "devDependencies": {},
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/r-factchecker"
+  },
+  "homepage": "https://github.com/yourusername/r-factchecker#readme",
+  "bugs": {
+    "url": "https://github.com/yourusername/r-factchecker/issues"
+  }
+}

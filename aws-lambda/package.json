@@ -1,0 +1,28 @@
+{
+  "name": "r-factchecker-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda functions for r/factchecker",
+  "main": "factChecker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "sam deploy --guided",
+    "local": "sam local start-api",
+    "build": "sam build"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "fact-checking",
+    "reddit",
+    "hackathon"
+  ],
+  "author": "r/factchecker team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.7"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  }
+}

@@ -1,0 +1,63 @@
+/* Content script styles for fact-checking overlays */
+
+.factcheck-overlay {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 10000 !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    padding: 15px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+    max-width: 300px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+.factcheck-button {
+    transition: all 0.2s ease !important;
+}
+
+.factcheck-button:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+.suspicious-content {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-left: 3px solid #ef4444 !important;
+    padding-left: 8px !important;
+    margin: 4px 0 !important;
+}
+
+.verified-content {
+    background: rgba(34, 197, 94, 0.1) !important;
+    border-left: 3px solid #22c55e !important;
+    padding-left: 8px !important;
+    margin: 4px 0 !important;
+}
+
+.credibility-indicator {
+    display: inline-block !important;
+    padding: 2px 6px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+    margin-left: 8px !important;
+}
+
+.credibility-high {
+    background: #22c55e !important;
+    color: white !important;
+}
+
+.credibility-medium {
+    background: #fbbf24 !important;
+    color: #000 !important;
+}
+
+.credibility-low {
+    background: #ef4444 !important;
+    color: white !important;
+}

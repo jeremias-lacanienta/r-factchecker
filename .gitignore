@@ -1,0 +1,21 @@
+# Browser Extension Build Files
+*.zip
+*.crx
+*.pem
+
+# Development Files
+node_modules/
+.DS_Store
+.env
+
+# AWS Lambda
+aws-lambda/node_modules/
+aws-lambda/.aws-sam/
+
+# IDE Files
+.vscode/
+.idea/
+
+# Temporary Files
+*.tmp
+*.log

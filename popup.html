@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 350px;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .tagline {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: white;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .result {
+            display: none;
+            margin-top: 15px;
+        }
+        
+        .credibility-score {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .score-high { background: rgba(34, 197, 94, 0.3); }
+        .score-medium { background: rgba(251, 191, 36, 0.3); }
+        .score-low { background: rgba(239, 68, 68, 0.3); }
+        
+        .status {
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">r/factchecker</div>
+        <div class="tagline">AI-powered fact checking</div>
+    </div>
+    
+    <div class="section">
+        <button class="button" id="checkSelection">Check Selected Text</button>
+        <button class="button" id="checkCurrentPage">Check Current Page</button>
+    </div>
+    
+    <div class="section">
+        <div class="input-group">
+            <input type="text" class="input" id="urlInput" placeholder="Enter Reddit URL or any URL">
+            <button class="button" id="checkUrl" style="margin-top: 10px;">Check URL</button>
+        </div>
+    </div>
+    
+    <div class="result" id="result">
+        <div class="credibility-score" id="credibilityScore"></div>
+        <div id="analysis"></div>
+    </div>
+    
+    <div class="status" id="status">Ready to fact-check</div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
