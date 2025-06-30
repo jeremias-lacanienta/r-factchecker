@@ -48,6 +48,43 @@ A powerful browser extension that provides real-time fact-checking for Reddit po
    ./deploy.sh
    ```
 
+## 🚀 **Quick Deployment Guide**
+
+### **Step 1: Setup Environment**
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit the .env file with your credentials
+nano .env  # or use your preferred editor
+```
+
+### **Step 2: Configure AWS Credentials**
+Add your AWS credentials to the `.env` file:
+```env
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=us-east-1
+```
+
+### **Step 3: Deploy to AWS**
+```bash
+# Make deployment script executable
+chmod +x deploy.sh
+
+# Deploy to AWS Lambda
+./deploy.sh
+```
+
+The deployment script will:
+- Load environment variables from `.env`
+- Install Lambda dependencies
+- Build and deploy using AWS SAM
+- Output your API Gateway URL and API Key
+
+### **Step 4: Update Browser Extension**
+After deployment, update the API endpoint in your extension files with the deployed API Gateway URL.
+
 ## 🏗️ Project Structure
 
 ```
@@ -58,20 +95,34 @@ r_checker/
 ├── background.js          # Background service worker
 ├── content.js             # Content script for webpage interaction
 ├── content.css            # Styling for content script overlays
+├── .env.example           # Environment variables template
 ├── aws-lambda/            # AWS Lambda backend
 │   ├── factChecker.js     # Main Lambda function
 │   ├── package.json       # Lambda dependencies
 │   ├── template.yaml      # SAM template
 │   └── trust-policy.json  # IAM role policy
-├── icons/                 # Extension icons
 └── deploy.sh              # Deployment script
 ```
 
 ## 🔧 Configuration
 
-1. **AWS Setup**: Configure your AWS credentials and update the API endpoint in the extension files
-2. **Reddit API**: Add your Reddit API credentials to the Lambda function
-3. **Fact-checking APIs**: Configure access to fact-checking services
+1. **Environment Setup**: Copy `.env.example` to `.env` and configure your credentials:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your AWS credentials and API keys
+   ```
+
+2. **AWS Credentials**: Add your AWS credentials to the `.env` file:
+   ```env
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_DEFAULT_REGION=us-east-1
+   ```
+
+3. **API Keys**: Configure API credentials for external services:
+   - Reddit API credentials
+   - Fact-checking service API keys
+   - Any other third-party APIs
 
 ## 🎯 Usage
 
